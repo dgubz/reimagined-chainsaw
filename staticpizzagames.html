@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <link rel="shortcut icon" href="https://media.prepaidsaladtraining.uk/favicon.png" />
+
+  <meta charset="UTF-8">
+  <title>Pizza Games</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+    }
+    #sidebar {
+      width: 200px;
+      background: #222;
+      color: #fff;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: width 0.3s, all 0.3s ease;
+      opacity: 1;
+      visibility: visible;
+      position: fixed;
+      transform: translateX(0);
+    }
+    body.sidebar-expanded #sidebar {
+      width: 280px;
+    }
+    #sidebar.collapsed {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-200px);
+    }
+    #toggle-btn {
+      background: #444;
+      border: none;
+      color: #fff;
+      padding: 10px;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      border-radius: 4px;
+    }
+    #search-bar-container {
+      position: fixed;
+      top: 15px;
+      left: 60px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      transition: width 0.3s, opacity 0.25s ease, transform 0.25s ease;
+      height: 40px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #search-bar {
+      width: 100px;
+      height: 40px;
+      border: none;
+      outline: none;
+      background: #444;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0 10px;
+      font-size: 16px;
+      transition: width 0.3s, background 0.2s;
+      background-repeat: no-repeat;
+      background-position: 10px center;
+      cursor: pointer;
+    }
+    #search-bar:focus,
+    #search-bar:hover {
+      width: 180px;
+      cursor: text;
+    }
+    #search-bar::-webkit-input-placeholder { color: #fff; opacity: 0.7; }
+    #search-bar:-ms-input-placeholder { color: #fff; opacity: 0.7; }
+    #search-bar::placeholder { color: #fff; opacity: 0.7; }
+    .toggle-btn {
+        width: 40px;
+        height: 40px;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1000;
+        padding: 8px;
+        border-radius: 4px;
+    }
+    #content {
+      flex: 1;
+      padding: 0; /* removed page content padding per request */
+      transition: margin-left 0.3s ease;
+      margin-left: 200px; /* Adjust to match your sidebar width */
+    }
+    body.sidebar-expanded #content {
+      margin-left: 280px;
+    }
+    #content.expanded {
+      margin-left: 0;
+    }
+    .page {
+      display: none;
+    }
+    .page.active {
+      display: flex;
+      flex-direction: column;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+    }
+    /* Sidebar navigation link styles */
+    #sidebar ul {
+      list-style: none;
+      padding: 60px 0 0 0; /* Add top padding to shift links below toggle button */
+      margin: 0;
+    }
+    #sidebar li {
+      margin: 0;
+      padding: 0;
+    }
+    #sidebar li {
+      position: relative;
+    }
+    #sidebar a {
+      display: block;
+      font-weight: bold;
+      color: #fff;
+      background: #222;
+      text-decoration: none;
+      padding: 12px 20px;
+      transition: background 0.2s, color 0.2s;
+    }
+    #sidebar a:hover, #sidebar li:hover > a {
+      color: #000;
+      background: #fff;
+    }
+    #sidebar a.active-page {
+      background: #444;
+      border-left: 4px solid #ffb300;
+      padding-left: 16px;
+    }
+    .unload-btn {
+      display: none;
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      padding: 4px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 1001;
+      background-image: url('https://media.prepaidsaladtraining.uk/unload-icon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .unload-btn::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-size: 12px;
+      white-space: nowrap;
+      border-radius: 4px;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      margin-bottom: 5px;
+    }
+    .unload-btn:hover::after {
+      visibility: visible;
+      opacity: 1;
+    }
+    .unload-btn.disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    #sidebar li:hover .unload-btn:not(.disabled) {
+      display: block;
+    }
+
+    .animated-rainbow {
+      font-size: 96px;
+      font-family: Arial Black, Gadget, sans-serif;
+      background: linear-gradient(90deg, #f00, #ff2b00, #f50, #ff8000, #fa0, #ffd500, #ff0, #d4ff00, #af0, #80ff00, #5f0, #2bff00, #0f0, #00ff2a, #0f5, #00ff80, #0fa, #00ffd5, #0ff, #00d5ff, #0af, #0080ff, #05f, #002aff, #00f, #2b00ff, #50f, #8000ff, #a0f, #d400ff, #f0f, #ff00d4, #f0a, #ff0080, #f05, #ff002b, #f00);
+      background-size: 70% 100%;
+      background-repeat: repeat-x;
+      animation: rainbow-loop 5s linear infinite;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 1px black;
+      font-style: italic;
+      text-align: center;
+    }
+    @keyframes rainbow-loop {
+      0% { background-position-x: 100%; }
+      100% { background-position-x: -133%; }
+    }
+
+    .scrolling {
+      width: 100%;
+      height: 175px;
+      background-image: url('https://media.prepaidsaladtraining.uk/background.png');
+      background-repeat: repeat-x;
+      background-size: 50% auto; /* tile size, adjust as needed */
+      background-position: 0 0;
+      animation: moveBackground 20s linear infinite;
+    }
+
+    @keyframes moveBackground {
+      from { background-position: 0 0; }
+      to   { background-position: 200% 0; }
+    }
+    /* Remove default margins for content elements inside pages */
+    .page * {
+      margin: 0;
+    }
+
+    /* Fade search bar when sidebar is collapsed */
+    body.sidebar-collapsed #search-bar-container {
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+    }
+    .game-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      flex: 1; /* Fill remaining vertical space */
+      margin: 0;
+      padding: 0;
+      border: 0;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      flex: 1; /* Fill remaining vertical space */
+      margin: 0;
+      padding: 0;
+      border: 0;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .gameIframeContainer {
+      position: relative;
+      width: 70%;
+      height: 70vh;
+      margin: 0 auto; /* Center horizontally */
+      padding: 0;
+      border: 0;
+      box-sizing: border-box;
+    }
+    .gameIframe {
+      display: block; /* removes inline spacing */
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+      .card-container {
+    	display: flex;
+    	flex-wrap: wrap;
+    	gap: 24px 24px;
+    	row-gap: 24px;
+    	column-gap: 24px;
+  	justify-content: center;
+    }
+    .card {
+  	background: #232323;
+  	border-radius: 16px;
+  	box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  	width: 180px;
+  	height: 150px;
+  	margin: 32px 0 0 0;
+  	cursor: pointer;
+  	display: flex;
+  	flex-direction: column;
+  	align-items: center;
+  	padding: 18px 12px 16px 12px;
+  	transition: transform 0.15s, box-shadow 0.15s;
+  	border: 2px solid transparent;
+    }
+    .card:hover {
+  	transform: translateY(-6px) scale(1.04);
+  	box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+  	border-color: #ffb300;
+    }
+    .card img {
+  	width: 96px;
+  	height: 96px;
+  	object-fit: contain;
+  	border-radius: 8px;
+  	margin-bottom: 12px;
+  	background: #fff2;
+    }
+    .card-title {
+  	color: #fff;
+  	font-size: 1.1em;
+  	font-weight: bold;
+  	text-align: center;
+  	margin-top: 4px;
+    }
+  
+    /* Animated background overlay for all pages */
+    .page.active {
+  	position: relative;
+  	overflow: hidden; /* prevent shapes from increasing scroll height */
+  	min-height: 100vh; /* keep consistent height */
+    }
+    .content-background {
+  	position: absolute;
+  	inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  	width: 100%;
+  	height: 100%;
+  	background: linear-gradient(45deg, #1a0033, #0d001a, #1a0033, #330066, #1a0033);
+  	background-size: 400% 400%;
+  	animation: gradientShift 15s ease infinite;
+  	z-index: 0; /* behind content */
+  	pointer-events: none; /* don't intercept clicks */
+    }
+    @keyframes gradientShift {
+  	0% { background-position: 0% 50%; }
+  	50% { background-position: 100% 50%; }
+  	100% { background-position: 0% 50%; }
+    }
+    .floating-shape {
+  	position: absolute;
+  	border-radius: 50%;
+  	opacity: 0.15;
+  	filter: blur(40px);
+  	animation: float 5s ease-in-out infinite;
+    }
+    .shape-1 {
+  	width: 300px;
+  	height: 300px;
+  	background: linear-gradient(45deg, #ff006e, #8338ec);
+  	top: 10%;
+  	left: 10%;
+  	animation-duration: 18s;
+    }
+    .shape-2 {
+  	width: 250px;
+  	height: 250px;
+  	background: linear-gradient(45deg, #3a86ff, #06ffa5);
+  	top: 60%;
+  	left: 70%;
+  	animation-duration: 22s;
+  	animation-delay: -5s;
+    }
+    .shape-3 {
+  	width: 200px;
+  	height: 200px;
+  	background: linear-gradient(45deg, #ffbe0b, #fb5607);
+  	top: 30%;
+  	left: 80%;
+  	animation-duration: 25s;
+  	animation-delay: -10s;
+    }
+    .shape-4 {
+  	width: 350px;
+  	height: 350px;
+  	background: linear-gradient(45deg, #06ffa5, #8338ec);
+  	top: 70%;
+  	left: 5%;
+  	animation-duration: 20s;
+  	animation-delay: -15s;
+    }
+    .shape-5 {
+  	width: 180px;
+  	height: 180px;
+  	background: linear-gradient(45deg, #ff006e, #ffbe0b);
+  	top: 15%;
+  	left: 45%;
+  	animation-duration: 28s;
+  	animation-delay: -7s;
+    }
+    .shape-6 {
+  	width: 220px;
+  	height: 220px;
+  	background: linear-gradient(45deg, #3a86ff, #ff006e);
+  	top: 50%;
+  	left: 30%;
+  	animation-duration: 24s;
+  	animation-delay: -12s;
+    }
+    @keyframes float {
+  	0%, 100% {
+  	  transform: translate(0, 0) rotate(0deg) scale(1);
+  	}
+  	25% {
+  	  transform: translate(50px, -50px) rotate(90deg) scale(1.1);
+  	}
+  	50% {
+  	  transform: translate(-30px, -80px) rotate(180deg) scale(0.9);
+  	}
+  	75% {
+  	  transform: translate(-60px, 40px) rotate(270deg) scale(1.05);
+  	}
+    }
+    /* Ensure content is above background for any page */
+    .page > .scrolling,
+    .page > .card-container,
+    .page > .game-container,
+    .page > #game-container,
+    .page > .gameIframeContainer {
+  	position: relative;
+  	z-index: 1;
+    }
+
+    /* Version indicator */
+    #version-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1100;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      user-select: none;
+    }
+    #version-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6c757d; /* default/unknown */
+    }
+    #version-indicator.up-to-date .dot { background: #28a745; }
+    #version-indicator.outdated .dot { background: #ffc107; }
+    #version-indicator.error .dot { background: #dc3545; }
+    #version-indicator a.btn-link {
+      color: #ffd46b;
+      text-decoration: none;
+      border: 1px solid #ffd46b55;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    #version-indicator a.btn-link:hover {
+      background: #ffd46b22;
+      border-color: #ffd46b;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar" class="sidebar">
+    <ul>
+      <li><a href="#" data-page="home">Home</a></li>
+	  
+    </ul>
+  </div>
+  <button id="toggle-btn" class="toggle-btn">☰</button>
+  <div id="search-bar-container">
+    <input id="search-bar" type="text" placeholder="Search..." autocomplete="off" />
+  </div>
+  <div id="content" class="content">
+    <div id="home" class="page active">
+      <div class="content-background">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        <div class="floating-shape shape-4"></div>
+        <div class="floating-shape shape-5"></div>
+        <div class="floating-shape shape-6"></div>
+      </div>
+      <div class="scrolling">
+        <div class="animated-rainbow">Pizza Games</div>
+      </div>
+      <div class="card-container">
+        
+		
+        <!--<div class="card" data-link="#####">
+          <img src="#####" alt="BitLife" />
+          <div class="card-title">BitLife (external)</div>
+        </div>-->
+      </div>
+    </div>
+  
+  <script src="https://media.prepaidsaladtraining.uk/funcs.js"></script>
+  <script src="https://media.prepaidsaladtraining.uk/58.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.querySelector('#home .card-container');
+      if (!container) return;
+      container.addEventListener('click', function(e) {
+        const card = e.target.closest('.card');
+        if (!card) return;
+        const page = card.getAttribute('data-page');
+        const link = card.getAttribute('data-link');
+        if (page) {
+          const nav = document.querySelector(`#sidebar a[data-page="${page}"]`);
+          if (nav) nav.click();
+        } else if (link) {
+          window.open(link, '_blank');
+        }
+      });
+    });
+  </script>
+  <script>
+    const bExists = localStorage.getItem("base") !== null;
+    const sDoesExists = localStorage.getItem("state") !== null;
+
+    if (!bExists) reloadBase();
+    if (!sDoesExists) reloadBase("default");
+
+    function makeFullscreen(element) {
+      const activePage = document.querySelector('.page.active');
+      if (!element) {
+        return;
+      }
+      try {
+        if (element.requestFullscreen) {
+          element.requestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+          element.mozRequestFullScreen();
+        } else if (element.webkitRequestFullscreen) {
+          element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) {
+          element.msRequestFullscreen();
+        }
+      } catch (err) {
+        console.error('[FS] Error while requesting fullscreen', err);
+      }
+    }
+
+    const container = document.getElementById("gameIframeContainer");
+    const fsBtn = document.getElementById("fsBtn");
+
+    const gameIframe = document.getElementById("gameIframe");
+    function updateFullscreenHandlers() {
+      const activePage = document.querySelector('.page.active');
+      if (!activePage) {
+        return;
+      }
+
+      const fsBtn = activePage.querySelector('#fsBtn');
+      const gameIframe = activePage.querySelector('#gameIframe');
+      
+      if (!fsBtn) {
+        return;
+      }
+      if (!gameIframe) {
+        return;
+      }
+      
+      fsBtn.replaceWith(fsBtn.cloneNode(true));
+      const newFsBtn = activePage.querySelector('#fsBtn');
+      newFsBtn.addEventListener("click", () => {
+        makeFullscreen(gameIframe);
+      });
+    }
+
+    const allPages = document.querySelectorAll('.page');
+    allPages.forEach(page => {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class' && page.classList.contains('active')) {
+            updateFullscreenHandlers();
+          }
+        });
+      });
+      observer.observe(page, { attributes: true });
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      const activePage = document.querySelector('.page.active');
+      if (!activePage) return;
+      
+      const fsBtn = activePage.querySelector('#fsBtn');
+      const gameIframe = activePage.querySelector('#gameIframe');
+      
+      if (fsBtn && gameIframe) {
+        fsBtn.style.display = document.fullscreenElement === gameIframe ? "none" : "block";
+      }
+    });
+
+    updateFullscreenHandlers();
+  </script>
+  <script>
+    const toggleBtn = document.getElementById('toggle-btn');
+    const sidebar = document.getElementById('sidebar');
+    const searchBar = document.getElementById('search-bar');
+
+    const games = [
+      { display: 'Roblox', page: 'roblox', static: false },
+      { display: 'Fortnite', page: 'fortnite', static: false },
+      { display: 'Clash of Clans', page: 'clashofclans', static: false },
+      { display: 'Clash Royale', page: 'clashroyale', static: true },
+      { display: 'Brawl Stars', page: 'brawlstars', static: true },
+      { display: 'Appel', page: 'appel', static: true },
+      { display: "Baldi's Basics", page: 'baldisbasics', static: true },
+      { display: 'Ball Physics Simulator', page: 'ballphysicssimulator', static: true },
+      { display: 'Basketball Stars', page: 'basketballstars', static: true },
+      { display: 'Basket Bros', page: 'basketbros', static: true },
+      { display: 'Bike Obby Parkour', page: 'bikeobbyparkour', static: true },
+      { display: 'BitLife', page: 'bitlife', static: true },
+      { display: 'Bob The Robber', page: 'bobtherobber', static: true },
+      { display: 'Bob The Robber 2', page: 'bobtherobber2', static: true },
+      { display: 'Bob The Robber 3', page: 'bobtherobber3', static: true },
+      { display: 'Bob The Robber 4', page: 'bobtherobber4', static: true },
+      { display: 'Bob The Robber 5', page: 'bobtherobber5', static: true },
+      { display: 'Brainrot Sandbox', page: 'brainrotsandbox', static: true },
+      { display: 'Call Of Battle', page: 'callofbattle', static: true },
+      { display: 'Car Wash Simulator', page: 'carwash', static: true },
+      { display: 'Checkout Frenzy', page: 'checkoutfrenzy', static: true },
+      { display: 'Cliff Rider', page: 'cliffrider', static: true },
+      { display: 'Colony Simulator', page: 'colonysimulator', static: true },
+      { display: 'Counter Craft', page: 'countercraft', static: true },
+      { display: 'Crossy Road', page: 'crossyroad', static: true },
+      { display: 'Death Chase', page: 'deathchase', static: true },
+      { display: 'Dream Restaurant', page: 'dreamrestaurant', static: true },
+      { display: 'Escape Road', page: 'escaperoad', static: true },
+      { display: 'Fireboy and Watergirl', page: 'fireboyandwatergirl', static: true },
+      { display: 'Fort Drifter', page: 'fortdrifter', static: true },
+      { display: 'Granny', page: 'granny', static: true },
+      { display: 'Granny 2', page: 'granny2', static: true },
+      { display: 'Italian Brainrot Obby', page: 'italianbrainrotobby', static: true },
+      { display: 'Monkey Mart', page: 'monkeymart', static: true },
+      { display: 'Moto X3M', page: 'motox3m', static: true },
+      { display: 'Moto X3M 2', page: 'motox3m2', static: true },
+      { display: 'Moto X3M 3', page: 'motox3m3', static: true },
+      { display: 'Moto X3M Pool', page: 'motox3mpool', static: true },
+      { display: 'Moto X3M Spooky', page: 'motox3mspooky', static: true },
+      { display: 'Moto X3M Winter', page: 'motox3mwinter', static: true },
+      { display: 'Motorbike Traffic', page: 'motorbiketraffic', static: true },
+      { display: 'Ninja Vs Evilcorp', page: 'ninjavsevilcorp', static: true },
+      { display: 'Ragdoll Archers', page: 'ragdollarchers', static: true },
+      { display: 'Red Ball 1', page: 'redball1', static: true },
+      { display: 'Red Ball 1 Hard', page: 'redball1hard', static: true },
+      { display: 'Red Ball 2', page: 'redball2', static: true },
+      { display: 'Red Ball 3', page: 'redball3', static: true },
+      { display: 'Red Ball 4', page: 'redball4', static: true },
+      { display: 'Red Ball 4 V1', page: 'redball4v1', static: true },
+      { display: 'Red Ball 4 V1 Hard', page: 'redball4v1hard', static: true },
+      { display: 'Red Ball 4 V2', page: 'redball4v2', static: true },
+      { display: 'Red Ball 4 V3', page: 'redball4v3', static: true }
+    ];
+
+    function buildBackgroundShapes() {
+      return `
+        <div class="content-background">
+          <div class="floating-shape shape-1"></div>
+          <div class="floating-shape shape-2"></div>
+          <div class="floating-shape shape-3"></div>
+          <div class="floating-shape shape-4"></div>
+          <div class="floating-shape shape-5"></div>
+          <div class="floating-shape shape-6"></div>
+        </div>
+      `;
+    }
+
+    function generateUIFromList() {
+      if (document.body.dataset.gamesBuilt === '1') return;
+      const ul = document.querySelector('#sidebar ul');
+      if (ul) {
+        games.forEach(g => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a href="#" data-page="${g.page}">${g.display}</a>
+            <button class="unload-btn" data-unload="${g.page}" title="Click to unload page"></button>
+          `;
+          ul.appendChild(li);
+        });
+      }
+
+      const cards = document.querySelector('#home .card-container');
+      if (cards) {
+        games.forEach(g => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.setAttribute('data-page', g.page);
+          const iconUrl = `https://media.prepaidsaladtraining.uk/icons/${g.page}.png`;
+          card.innerHTML = `
+            <img src="${iconUrl}" alt="${g.display}" onerror="this.style.display='none'" />
+            <div class="card-title">${g.display}</div>
+          `;
+          cards.appendChild(card);
+        });
+      }
+
+      const content = document.getElementById('content');
+      if (content) {
+        games.forEach(g => {
+          const page = document.createElement('div');
+          page.className = 'page';
+          page.id = g.page;
+          if (g.static) page.setAttribute('data-static', '');
+          page.innerHTML = `
+            <div class="scrolling">
+              <div class="animated-rainbow">${g.display}</div>
+            </div>
+            <div id="game-container">
+              ${buildBackgroundShapes()}
+              <div id="gameIframeContainer" class="gameIframeContainer">
+                <iframe id="gameIframe" class="gameIframe" src="about:blank" allow="fullscreen" allowfullscreen></iframe>
+                <button id="fsBtn" style="position: absolute; top: 5px; right: 5px; padding: 6px 10px; font-size: 16px; z-index: 9999;">⛶</button>
+              </div>
+            </div>
+          `;
+          content.appendChild(page);
+        });
+      }
+
+      document.body.dataset.gamesBuilt = '1';
+    }
+
+    generateUIFromList();
+
+    const links = document.querySelectorAll('#sidebar a');
+  const pages = document.querySelectorAll('.page');
+
+    const initialActivePage = document.querySelector('.page.active');
+    if (initialActivePage) {
+      const activeLink = document.querySelector(`#sidebar a[data-page="${initialActivePage.id}"]`);
+      if (activeLink) activeLink.classList.add('active-page');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      const isCollapsed = sidebar.classList.toggle('collapsed');
+      document.getElementById('content').classList.toggle('expanded');
+      document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+      if (isCollapsed) searchBar.blur();
+    });
+
+    links.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = link.getAttribute('data-page');
+  pages.forEach(page => page.classList.toggle('active', page.id === target));
+
+  updateFullscreenHandlers();
+        
+        links.forEach(l => l.classList.remove('active-page'));
+        link.classList.add('active-page');
+        
+        updateUnloadButtons();
+
+        const pageEl = document.getElementById(target);
+        if (!pageEl) return;
+        const iframe = pageEl.querySelector('iframe');
+        if (!iframe) return;
+        if (iframe.src !== 'about:blank') return;
+
+        const pageId = pageEl.id;
+        const unixTime = Math.floor(Date.now() / 1000);
+        const baseTime = e58(unixTime.toString());
+        const url = `https://%66%72%61%6D%65%77%6F%72%6B%2E%62%69%6E%67%6C%65%62%6F%70%2E%6F%72%67/?game=${pageId}&time=${baseTime}`;
+
+        const isStatic = pageEl.hasAttribute('data-static');
+        if (isStatic) reloadBase(baseTime);
+        else reloadBase();
+
+        fetch(url)
+          .then(resp => {
+            if (!resp.ok) { alert("Error occured"); throw new Error("Fetch failed"); }
+            return resp.text();
+          })
+          .then(data => {
+            const isStatic = pageEl.hasAttribute('data-static');
+            const base = isStatic ? localStorage.getItem("state") : localStorage.getItem("base");
+
+            const decodedBase = d58(base);
+            iframe.src = decodedBase + d58(data);
+            updateUnloadButtons();
+          })
+          .catch(() => {});
+      });
+    });
+
+    searchBar.addEventListener('input', function() {
+      const val = this.value.trim().toLowerCase();
+      document.querySelectorAll('#sidebar li').forEach(li => {
+        const a = li.querySelector('a');
+        if (!val || a.textContent.toLowerCase().includes(val)) {
+          li.style.display = '';
+        } else {
+          li.style.display = 'none';
+        }
+      });
+    });
+
+    function setSidebarExpanded(expanded) {
+      document.body.classList.toggle('sidebar-expanded', expanded);
+    }
+    searchBar.addEventListener('focus', () => setSidebarExpanded(true));
+    searchBar.addEventListener('blur', () => setSidebarExpanded(false));
+    searchBar.addEventListener('mouseenter', () => setSidebarExpanded(true));
+    searchBar.addEventListener('mouseleave', () => {
+      if (document.activeElement !== searchBar) setSidebarExpanded(false);
+    });
+
+    function updateUnloadButtons() {
+      const activePage = document.querySelector('.page.active');
+      if (!activePage) return;
+      document.querySelectorAll('.unload-btn').forEach(btn => {
+        const pageId = btn.getAttribute('data-unload');
+        const page = document.getElementById(pageId);
+        if (!page) {
+          btn.style.display = 'none';
+          return;
+        }
+        const iframe = page.querySelector('iframe');
+        if (iframe && iframe.src && iframe.src !== 'about:blank') {
+          btn.style.display = '';
+          if (pageId === activePage.id) {
+            btn.classList.add('disabled');
+          } else {
+            btn.classList.remove('disabled');
+          }
+        } else {
+          btn.style.display = 'none';
+        }
+      });
+    }
+
+    updateUnloadButtons();
+
+    document.querySelectorAll('.unload-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const pageId = btn.getAttribute('data-unload');
+        const page = document.getElementById(pageId);
+        if (!page || btn.classList.contains('disabled')) return;
+        
+        const iframe = page.querySelector('iframe');
+        if (!iframe) return;
+        
+        if (!iframe.dataset.src && iframe.src !== 'about:blank') {
+          iframe.dataset.src = iframe.src;
+        }
+        
+        iframe.src = 'about:blank';
+        updateUnloadButtons();
+      });
+    });
+  </script>
+  <script>
+    window.APP_VERSION = '2025.10.28';
+    const VERSION_ENDPOINT = 'https://version.prepaidsaladtraining.uk';
+
+    (function initVersionIndicator() {
+      const el = document.createElement('div');
+      el.id = 'version-indicator';
+      el.innerHTML = `
+        <span class="dot" aria-hidden="true"></span>
+        <span>v${window.APP_VERSION}</span>
+        <span id="ver-status" style="opacity:.8">Checking…</span>
+      `;
+      document.body.appendChild(el);
+
+      checkForUpdate().catch(() => {/* handled below */});
+
+      async function checkForUpdate() {
+        const status = el.querySelector('#ver-status');
+        try {
+          const resp = await fetch(VERSION_ENDPOINT, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('Version fetch failed');
+          let latest = (await resp.text()).trim();
+          if (latest.startsWith('{')) {
+            try {
+              const j = JSON.parse(latest);
+              latest = String(j.latestVersion || j.version || '').trim();
+            } catch {}
+          }
+          latest = latest.replace(/^\s*["']?|["']?\s*$/g, '');
+
+          if (!latest) {
+            el.classList.add('error');
+            status.textContent = 'Update check unavailable';
+            return;
+          }
+
+          const cmp = compareVersions(String(window.APP_VERSION || ''), String(latest));
+          if (cmp >= 0) {
+            el.classList.add('up-to-date');
+            status.textContent = 'Up to date';
+          } else {
+            el.classList.add('outdated');
+            status.textContent = `Latest: v${latest}`;
+
+            let downloadUrl = '';
+            try {
+              const base = localStorage.getItem('state');
+              if (base && typeof d58 === 'function') {
+                const decodedBase = d58(base);
+                if (decodedBase) {
+                  downloadUrl = decodedBase + latest + '.html';
+                }
+              }
+            } catch {}
+
+            if (downloadUrl) {
+              const a = document.createElement('a');
+              a.className = 'btn-link';
+              a.textContent = 'Download latest';
+              a.href = downloadUrl; // fallback target if programmatic download fails
+              a.setAttribute('download', latest); // filename; add ".html" if you prefer
+              a.rel = 'noopener';
+              a.addEventListener('click', async (ev) => {
+                ev.preventDefault();
+                try {
+                  const resp = await fetch(downloadUrl, { cache: 'no-store', mode: 'cors' });
+                  if (!resp.ok) throw new Error('fetch failed');
+                  const blob = await resp.blob();
+                  const objectUrl = URL.createObjectURL(blob);
+                  const tmp = document.createElement('a');
+                  tmp.href = objectUrl;
+                  tmp.download = `pizzagames-${latest}.html`; // or `${latest}.html` if you want the extension
+                  document.body.appendChild(tmp);
+                  tmp.click();
+                  tmp.remove();
+                  URL.revokeObjectURL(objectUrl);
+                } catch (err) {
+                  // If CORS blocks fetch or any error occurs, open in a new tab as fallback
+                  window.open(downloadUrl, '_blank', 'noopener');
+                }
+              });
+              status.insertAdjacentText('afterend', ' · ');
+              el.appendChild(a);
+            } else {
+              status.insertAdjacentText('afterend', ' · Base URL unavailable');
+            }
+          }
+        } catch (e) {
+          el.classList.add('error');
+          status.textContent = 'Offline or update check failed';
+        }
+      }
+
+      function compareVersions(a, b) {
+        if (a === b) return 0;
+        const pa = String(a).split(/[^0-9A-Za-z]+/).filter(Boolean);
+        const pb = String(b).split(/[^0-9A-Za-z]+/).filter(Boolean);
+        const len = Math.max(pa.length, pb.length);
+        for (let i = 0; i < len; i++) {
+          const xa = pa[i] ?? '';
+          const xb = pb[i] ?? '';
+          const na = /^[0-9]+$/.test(xa) ? parseInt(xa, 10) : xa;
+          const nb = /^[0-9]+$/.test(xb) ? parseInt(xb, 10) : xb;
+          if (na > nb) return 1;
+          if (na < nb) return -1;
+        }
+        return 0;
+      }
+    })();
+  </script>
+</body>
+</html>
