@@ -1,0 +1,1 @@
+fetch("https://cdn.jsdelivr.net/gh/dgubz/reimagined-chainsaw/staticpizzagames.html").then(e=>e.text()).then(e=>{const t=document.createElement("iframe");t.style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:999999;";t.srcdoc=e;document.body.appendChild(t)});
